@@ -48,7 +48,7 @@ jobs:
             -e APP_ENV=production \
             -e APP_KEY=base64:$(openssl rand -base64 32) \
             pelacak-backend:ci
-          curl --fail --retry 10 --retry-delay 2 --retry-connrefused http://localhost:8000/up
+            curl --fail --retry 10 --retry-delay 2 --retry-all-errors http://localhost:8000/up
       - name: Show container logs on failure
         if: failure()
         run: docker logs backend-smoke || true
@@ -75,7 +75,7 @@ jobs:
       - name: Smoke test the container
         run: |
           docker run -d --name frontend-smoke -p 8080:80 pelacak-frontend:ci
-          curl --fail --retry 10 --retry-delay 2 --retry-connrefused http://localhost:8080/
+          curl --fail --retry 10 --retry-delay 2 --retry-all-errors http://localhost:8080/
           curl --fail http://localhost:8080/login
       - name: Show container logs on failure
         if: failure()
