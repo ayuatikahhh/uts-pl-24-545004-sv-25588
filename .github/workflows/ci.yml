@@ -1,0 +1,17 @@
+name: CI
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: [main, dev]
+jobs:
+  backend-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "backend tests will be added in guide 04"
+  frontend-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "frontend build will be added in guide 04"
