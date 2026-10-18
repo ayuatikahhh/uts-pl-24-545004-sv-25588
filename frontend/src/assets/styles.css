@@ -1,0 +1,26 @@
+/* Gaya dasar yang sama di kedua halaman desain. Gaya khusus tiap halaman
+   ada di <style scoped> pada LoginView.vue dan ApplicationsView.vue. */
+:root {
+  --primary: #0ea5e9;
+  --primary-hover: #0284c7;
+  --primary-light: #e0f2fe;
+  --bg-body: #f8fafc;
+  --surface: #ffffff;
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  --border: #e2e8f0;
+  --danger: #ef4444;
+  --radius: 16px;
+  --status-applied-text: #0284c7;
+  --status-applied-bg: #e0f2fe;
+  --status-interview-text: #d97706;
+  --status-interview-bg: #fef3c7;
+  --font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: var(--font-family);
+  background-color: var(--bg-body);
+  color: var(--text-main);
+  -webkit-font-smoothing: antialiased;
+}
