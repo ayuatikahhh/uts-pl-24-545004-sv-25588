@@ -40,6 +40,18 @@ jobs:
           php artisan key:generate
       - name: Run tests
         run: php artisan test
+      - name: Build Docker image
+        run: docker build -t pelacak-backend:ci .
+      - name: Smoke test the container
+        run: |
+          docker run -d --name backend-smoke -p 8000:8000 \
+            -e APP_ENV=production \
+            -e APP_KEY=base64:$(openssl rand -base64 32) \
+            pelacak-backend:ci
+            curl --fail --retry 10 --retry-delay 2 --retry-all-errors http://localhost:8000/up
+      - name: Show container logs on failure
+        if: failure()
+        run: docker logs backend-smoke || true
   frontend-build:
     runs-on: ubuntu-latest
     defaults:
@@ -58,3 +70,13 @@ jobs:
         run: npm run build
       - name: Show build output
         run: ls -la dist
+      - name: Build Docker image
+        run: docker build -t pelacak-frontend:ci .
+      - name: Smoke test the container
+        run: |
+          docker run -d --name frontend-smoke -p 8080:80 pelacak-frontend:ci
+          curl --fail --retry 10 --retry-delay 2 --retry-all-errors http://localhost:8080/
+          curl --fail http://localhost:8080/login
+      - name: Show container logs on failure
+        if: failure()
+        run: docker logs frontend-smoke || true
