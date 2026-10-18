@@ -67,6 +67,24 @@ Browser hanya berbicara dengan frontend. Nginx di container frontend meneruskan 
 └── README.md
 ```
 
+## Menjalankan backend (tanpa Docker)
+
+Prasyarat: PHP 8.2 atau lebih baru (dengan ekstensi `pdo_mysql`), Composer, dan MySQL 8 yang sedang berjalan.
+
+    mysql -u root -e "CREATE DATABASE pelacak_magang; CREATE DATABASE pelacak_magang_test;"
+    cd backend
+    composer install
+    cp .env.example .env
+    php artisan key:generate
+    php artisan migrate --seed
+    php artisan serve
+
+Sesuaikan `DB_USERNAME` dan `DB_PASSWORD` di `backend/.env` dengan MySQL-mu.
+
+API berjalan di http://localhost:8000/api.
+
+Akun demo dibuat oleh seeder (lihat backend/database/seeders/DatabaseSeeder.php)
+
 ## Menjalankan proyek
 
 🚧 Bagian ini diisi setelah Docker Compose selesai. Rencananya:
@@ -110,7 +128,11 @@ Data lamaran:
 
 ## Pengujian
 
-🚧 Feature test backend dijalankan dengan `php artisan test` di folder `backend/`, dan otomatis dijalankan oleh CI pada setiap Pull Request.
+Feature test backend dijalankan di folder `backend/`:
+
+    php artisan test
+
+Test mencakup login, validasi, dan seluruh endpoint CRUD (kode 200, 201, 401, 404, 422), dan otomatis dijalankan oleh CI pada setiap Pull Request.
 
 ## Alur kerja Git
 
