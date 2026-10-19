@@ -1,0 +1,67 @@
+name: pelacak-magang
+
+services:
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE:?isi DB_DATABASE di .env}
+      MYSQL_USER: ${DB_USERNAME:?isi DB_USERNAME di .env}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?isi DB_PASSWORD di .env}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?isi DB_ROOT_PASSWORD di .env}
+    volumes:
+      - db-data:/var/lib/mysql
+    healthcheck:
+      # -h 127.0.0.1 memaksa lewat TCP, jadi tidak "sehat" palsu saat MySQL baru inisialisasi
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      APP_ENV: production
+      APP_DEBUG: "false"
+      APP_KEY: ${APP_KEY:?isi APP_KEY di .env}
+      LOG_CHANNEL: stderr
+      DB_CONNECTION: mysql
+      DB_HOST: db
+      DB_PORT: "3306"
+      DB_DATABASE: ${DB_DATABASE:?isi DB_DATABASE di .env}
+      DB_USERNAME: ${DB_USERNAME:?isi DB_USERNAME di .env}
+      DB_PASSWORD: ${DB_PASSWORD:?isi DB_PASSWORD di .env}
+    command:
+      - sh
+      - -c
+      - php artisan migrate --force && php artisan db:seed --force && exec php artisan serve --host=0.0.0.0 --port=8000 --no-reload
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8000/up >/dev/null || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${FRONTEND_PORT:-8080}:80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ >/dev/null || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  db-data:
