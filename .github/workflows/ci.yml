@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main, dev]
 
+permissions:
+  contents: read
+
 jobs:
   backend-test:
     runs-on: ubuntu-latest
@@ -99,4 +102,51 @@ jobs:
       - name: Tear down compose stack
         if: always()
         working-directory: .
+        run: docker compose down -v || true
+
+  deploy:
+    needs: [backend-test, frontend-build]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    env:
+      APP_KEY: ${{ secrets.APP_KEY }}
+      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Prepare image names and variables
+        run: |
+          OWNER="${GITHUB_REPOSITORY_OWNER,,}"
+          echo "BACKEND_IMAGE=ghcr.io/${OWNER}/pelacak-backend:${GITHUB_SHA}" >> "$GITHUB_ENV"
+          echo "FRONTEND_IMAGE=ghcr.io/${OWNER}/pelacak-frontend:${GITHUB_SHA}" >> "$GITHUB_ENV"
+          echo "DB_ROOT_PASSWORD=$(openssl rand -hex 16)" >> "$GITHUB_ENV"
+      - name: Log in to ghcr.io
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "$GH_TOKEN" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+      - name: Build images
+        run: |
+          docker build --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" -t "$BACKEND_IMAGE" backend
+          docker build --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" -t "$FRONTEND_IMAGE" frontend
+      - name: Push images to ghcr.io
+        run: |
+          docker push "$BACKEND_IMAGE"
+          docker push "$FRONTEND_IMAGE"
+      - name: Verify the published images with Compose
+        run: |
+          docker rmi "$BACKEND_IMAGE" "$FRONTEND_IMAGE"
+          cp .env.example .env
+          docker compose up -d --no-build --wait --wait-timeout 240
+          docker compose ps
+          curl --fail --retry 10 --retry-delay 2 --retry-all-errors \
+            -X POST http://localhost:8080/api/login \
+            -H 'Accept: application/json' -H 'Content-Type: application/json' \
+            -d '{"email":"demo@example.com","password":"password"}'
+      - name: Show compose logs on failure
+        if: failure()
+        run: docker compose logs --no-color || true
+      - name: Tear down compose stack
+        if: always()
         run: docker compose down -v || true
