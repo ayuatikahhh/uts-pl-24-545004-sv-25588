@@ -112,6 +112,14 @@ Menghentikan:
 docker compose down      # container dihapus, data database tetap ada di volume
 docker compose down -v   # juga menghapus data database
 ```
+## Image Docker
+
+Setiap push ke `main` yang lolos tes dan build menerbitkan dua image ke GitHub Container Registry, diberi tag nomor commit:
+
+- `ghcr.io/ayuatikahhh/pelacak-backend:<sha-commit>`
+- `ghcr.io/ayuatikahhh/pelacak-frontend:<sha-commit>`
+
+Image tidak berisi rahasia. `APP_KEY` dan `DB_PASSWORD` disimpan di GitHub Secrets dan hanya dipakai saat container dijalankan.
 
 ## Ringkasan API
 
