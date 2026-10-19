@@ -61,8 +61,8 @@ Browser hanya berbicara dengan frontend. Nginx di container frontend meneruskan 
 ├── frontend/                 # Vue.js
 ├── .github/workflows/        # Workflow CI/CD (GitHub Actions)
 ├── docs/postman/             # Koleksi Postman
-├── docker-compose.yml        # 🚧 Orkestrasi db, backend, frontend
-├── .env.example              # 🚧 Contoh konfigurasi (tanpa nilai rahasia)
+├── docker-compose.yml        # Orkestrasi db, backend, frontend
+├── .env.example              # Contoh konfigurasi (tanpa nilai rahasia)
 ├── .gitignore
 └── README.md
 ```
@@ -87,21 +87,31 @@ Akun demo dibuat oleh seeder (lihat backend/database/seeders/DatabaseSeeder.php)
 
 ## Menjalankan proyek
 
-🚧 Bagian ini diisi setelah Docker Compose selesai. Rencananya:
+Prasyarat: Docker Desktop (Compose sudah termasuk).
 
 ```
 cp .env.example .env
-docker compose up -d --build
+echo "base64:$(openssl rand -base64 32)"   # tempel hasilnya ke APP_KEY di .env
+# isi juga DB_PASSWORD dan DB_ROOT_PASSWORD di .env
+docker compose up -d --build --wait
+docker compose ps
 ```
 
-Setelah semua container berjalan:
+Setelah ketiga container `healthy`:
 
 | Layanan | Alamat |
 |---|---|
-| Frontend | http://localhost:8080 |
-| Backend API | http://localhost:8000/api |
+| Frontend | http://localhost:8080 (atau nilai `FRONTEND_PORT` di `.env`) |
+| Backend API | http://localhost:8000/api (atau nilai `BACKEND_PORT`) |
 
-Akun untuk login dibuat oleh seeder dan akan dicantumkan di sini. Akun tersebut hanya untuk keperluan demo.
+Akun login dibuat otomatis oleh seeder saat backend start: `demo@example.com` / `password`. Akun ini hanya untuk demo.
+
+Menghentikan:
+
+```
+docker compose down      # container dihapus, data database tetap ada di volume
+docker compose down -v   # juga menghapus data database
+```
 
 ## Ringkasan API
 
