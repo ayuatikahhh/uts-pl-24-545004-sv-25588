@@ -16,9 +16,18 @@ class DatabaseSeeder extends Seeder
             ['name' => 'Demo User', 'password' => 'password'],
         );
 
-        // Contoh data lamaran, hanya diisi bila tabel masih kosong.
+        // Lamaran contoh, hanya bila tabel masih kosong. Datanya tetap (tanpa Faker)
+        // karena Faker adalah paket dev yang tidak ada di image produksi.
         if (Application::count() === 0) {
-            Application::factory()->count(3)->create();
+            $samples = [
+                ['company' => 'PT Teknologi Nusantara', 'position' => 'Backend Developer Intern', 'status' => 'applied', 'deadline' => now()->addDays(14)->toDateString()],
+                ['company' => 'Startup Kreasi Digital', 'position' => 'Frontend Developer Intern', 'status' => 'interview', 'deadline' => now()->addDays(21)->toDateString()],
+                ['company' => 'CV Solusi Data', 'position' => 'QA Engineer Intern', 'status' => 'applied', 'deadline' => now()->addDays(30)->toDateString()],
+            ];
+
+            foreach ($samples as $sample) {
+                Application::create($sample);
+            }
         }
     }
 }
