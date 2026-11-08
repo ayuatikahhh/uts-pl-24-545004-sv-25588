@@ -12,12 +12,12 @@ services:
     volumes:
       - db-data:/var/lib/mysql
     healthcheck:
-      # -h 127.0.0.1 memaksa lewat TCP, jadi tidak "sehat" palsu saat MySQL baru inisialisasi
-      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p$$MYSQL_ROOT_PASSWORD --silent"]
-      interval: 5s
+      # /health memeriksa basis data dan cache; 503 membuat wget gagal (exit 1)
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8000/health >/dev/null || exit 1"]
+      interval: 10s
       timeout: 5s
-      retries: 20
-      start_period: 20s
+      retries: 3
+      start_period: 30s
 
   redis:
     image: redis:7.4-alpine
