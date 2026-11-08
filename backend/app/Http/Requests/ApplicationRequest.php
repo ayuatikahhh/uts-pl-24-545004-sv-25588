@@ -3,7 +3,9 @@
 namespace App\Http\Requests;
 
 use App\Models\Application;
+use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
 class ApplicationRequest extends FormRequest
@@ -26,4 +28,21 @@ class ApplicationRequest extends FormRequest
             'deadline' => ['nullable', 'date_format:Y-m-d'],
         ];
     }
+
+    /**
+     * Mencatat validasi yang gagal sebelum Laravel membalas 422.
+     * Yang dicatat hanya NAMA kolom yang gagal, bukan isinya.
+     */
+    protected function failedValidation(Validator $validator): void
+    {
+        Log::warning('Application validation failed', [
+            'user_id' => $this->user()?->id,
+            'action' => $this->isMethod('POST') ? 'application.create' : 'application.update',
+            'reason' => 'validation_failed',
+            'failed_fields' => array_keys($validator->errors()->messages()),
+        ]);
+
+        parent::failedValidation($validator);
+    }
+
 }
