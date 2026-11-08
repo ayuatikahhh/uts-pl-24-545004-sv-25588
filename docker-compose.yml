@@ -1,9 +1,18 @@
 name: pelacak-magang
 
+# Batas ukuran log untuk SEMUA service: tiap berkas log paling besar 10 MB,
+# dan Docker hanya menyimpan 3 berkas (sisanya dihapus otomatis).
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   db:
     image: mysql:8.0
     restart: unless-stopped
+    logging: *default-logging
     environment:
       MYSQL_DATABASE: ${DB_DATABASE:?isi DB_DATABASE di .env}
       MYSQL_USER: ${DB_USERNAME:?isi DB_USERNAME di .env}
@@ -12,16 +21,17 @@ services:
     volumes:
       - db-data:/var/lib/mysql
     healthcheck:
-      # /health memeriksa basis data dan cache; 503 membuat wget gagal (exit 1)
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8000/health >/dev/null || exit 1"]
-      interval: 10s
+      # -h 127.0.0.1 memaksa lewat TCP, jadi tidak "sehat" palsu saat MySQL baru inisialisasi
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
       timeout: 5s
-      retries: 3
-      start_period: 30s
+      retries: 20
+      start_period: 20s
 
   redis:
     image: redis:7.4-alpine
     restart: unless-stopped
+    logging: *default-logging
     # Murni cache: tidak menyimpan apa pun ke disk.
     command: ["redis-server", "--save", "", "--appendonly", "no"]
     healthcheck:
@@ -35,6 +45,7 @@ services:
     image: ${BACKEND_IMAGE:-pelacak-magang-backend}
     build: ./backend
     restart: unless-stopped
+    logging: *default-logging
     depends_on:
       db:
         condition: service_healthy
@@ -63,16 +74,18 @@ services:
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8000/up >/dev/null || exit 1"]
-      interval: 5s
+      # /health memeriksa basis data dan cache; 503 membuat wget gagal (exit 1)
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8000/health >/dev/null || exit 1"]
+      interval: 10s
       timeout: 5s
-      retries: 20
+      retries: 3
       start_period: 30s
 
   frontend:
     image: ${FRONTEND_IMAGE:-pelacak-magang-frontend}
     build: ./frontend
     restart: unless-stopped
+    logging: *default-logging
     depends_on:
       backend:
         condition: service_healthy
