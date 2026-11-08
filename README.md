@@ -22,6 +22,7 @@ Aplikasi web untuk mencatat dan memantau lamaran magang di satu tempat: perusaha
 - [Ringkasan API](#ringkasan-api)
 - [Pengujian](#pengujian)
 - [CI/CD dan image Docker](#cicd-dan-image-docker)
+- [Log dan health check](#log-dan-health-check)
 - [Alur kerja Git](#alur-kerja-git)
 - [Keamanan](#keamanan)
 - [Pemecahan masalah](#pemecahan-masalah)
@@ -63,7 +64,7 @@ Di luar cakupan: registrasi, reset password, peran pengguna, data per-user, ungg
 
 ## Arsitektur dan alur data
 
-Browser hanya berbicara dengan `frontend`. Container ini meneruskan permintaan `/api/...` ke `backend`, dan `backend` terhubung ke `db`. Semua sambungan antar-container memakai nama service di jaringan Docker Compose, bukan alamat IP laptop.
+Browser hanya berbicara dengan `frontend`. Container ini meneruskan permintaan `/api/...` ke `backend`, dan `backend` terhubung ke `db` (MySQL) dan `redis` (cache). Semua sambungan antar-container memakai nama service di jaringan Docker Compose, bukan alamat IP laptop.
 
 ```mermaid
 flowchart LR
@@ -236,6 +237,31 @@ Image diterbitkan dengan tag nomor commit (bukan `latest`):
 
 Image tidak berisi rahasia. `APP_KEY` dan `DB_PASSWORD` untuk job `deploy` disimpan di GitHub Secrets dan hanya dipakai saat container dijalankan. Pada Pull Request dan branch selain `main`, job `deploy` dilewati.
 
+## Log dan health check
+
+**Log.** Backend menulis log ke stdout dalam format JSON (satu baris per log), bukan ke file di dalam container. Setiap log membawa `request_id`, `method`, dan `path`, ditambah konteks seperti `user_id`, `action`, dan `reason`. Password, token, email, dan isi data tidak pernah dicatat.
+
+```bash
+docker compose logs -f backend
+docker compose logs backend --no-log-prefix | grep '"level_name"' | jq .
+```
+
+| Kejadian | Tingkat | Pesan |
+|---|---|---|
+| Lamaran dibuat, diubah, dihapus | `info` | `Application created/updated/deleted` |
+| Validasi lamaran gagal | `warning` | `Application validation failed` (hanya nama kolom) |
+| Basis data tidak bisa dihubungi | `error` | `Database operation failed` |
+| Health check gagal | `error` | `Health check failed` (menyebut `component`) |
+
+**Health check.** `GET /health` memeriksa basis data (query) dan cache Redis (tulis dan baca), lalu membalas `200` jika sehat atau `503` dengan bagian yang bermasalah. Healthcheck container backend memakai endpoint ini (interval 10 detik, timeout 5 detik, 3 kali percobaan, masa tenggang 30 detik).
+
+```bash
+curl -s http://localhost:8000/health | jq .
+docker compose ps        # kolom STATUS: healthy / unhealthy
+```
+
+**Batas ukuran log.** Semua service memakai driver `json-file` dengan `max-size: 10m` dan `max-file: 3`, sehingga log satu container paling besar sekitar 30 MB.
+
 ## Alur kerja Git
 
 | Branch | Fungsi | Push langsung |
@@ -280,6 +306,7 @@ Aturan:
 | Dockerfile backend dan frontend | ✅ |
 | Docker Compose | ✅ |
 | Build dan push image ke ghcr.io (job `deploy`) | ✅ |
+| Log terstruktur ke stdout, `/health`, healthcheck, batas ukuran log (Tugas P10) | ✅ |
 | Nilai tambahan (FrankenPHP) | Tidak dikerjakan (opsional) |
 
 ## Lisensi
